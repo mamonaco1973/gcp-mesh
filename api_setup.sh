@@ -1,23 +1,15 @@
 #!/bin/bash
+set -euo pipefail
 
-echo "NOTE: Validating credentials.json and test the gcloud command"
+# ================================================================================
+# api_setup.sh — Enable GCP APIs required for gcp-mesh
+# ================================================================================
 
-# Check if the file "./credentials.json" exists
-if [[ ! -f "./credentials.json" ]]; then
-  echo "ERROR: The file './credentials.json' does not exist." >&2
-  exit 1
-fi
+PROJECT_ID=$(jq -r '.project_id' "./credentials.json")
 
-gcloud auth activate-service-account --key-file="./credentials.json"
+echo "NOTE: Enabling required GCP APIs for project: ${PROJECT_ID}"
 
-# Extract the project_id using jq
-project_id=$(jq -r '.project_id' "./credentials.json")
+gcloud services enable compute.googleapis.com --project="${PROJECT_ID}"
+gcloud services enable iap.googleapis.com --project="${PROJECT_ID}"
 
-echo "NOTE: Enabling APIs needed for build."
-
-gcloud config set project $project_id  
-gcloud services enable compute.googleapis.com
-gcloud services enable firestore.googleapis.com
-gcloud services enable cloudresourcemanager.googleapis.com
-gcloud services enable storage.googleapis.com
-gcloud firestore databases create --location=us-central1 --type=firestore-native > /dev/null 2> /dev/null
+echo "NOTE: All required APIs enabled."

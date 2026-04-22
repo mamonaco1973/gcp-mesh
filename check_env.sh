@@ -1,38 +1,37 @@
 #!/bin/bash
+set -euo pipefail
 
-echo "NOTE: Validating that required commands are found in the PATH."
+# ================================================================================
+# check_env.sh — Environment validation for gcp-mesh
+# ================================================================================
 
-# List of required commands
-commands=("gcloud" "packer" "terraform")
+echo "NOTE: Validating required commands in PATH."
 
-# Flag to track if all commands are found
-all_found=true
+commands=("gcloud" "terraform" "jq")
 
-# Iterate through each command and check if it's available
 for cmd in "${commands[@]}"; do
-  if ! command -v "$cmd" &> /dev/null; then
-    echo "ERROR: $cmd is not foundin the current PATH."
-    all_found=false
-  else
-    echo "NOTE: $cmd is found in the current PATH."
+  if ! command -v "${cmd}" >/dev/null 2>&1; then
+    echo "ERROR: Required command not found: ${cmd}"
+    exit 1
   fi
+  echo "NOTE: Found required command: ${cmd}"
 done
 
-# Final status
-if [ "$all_found" = true ]; then
-  echo "NOTE: All required commands are available."
-else
-  echo "ERROR: One or more commands are missing."
-  exit 1
-fi
+echo "NOTE: All required commands are available."
 
-echo "NOTE: Validating credentials.json and test the gcloud command"
-
-# Check if the file "./credentials.json" exists
+echo "NOTE: Validating credentials.json..."
 if [[ ! -f "./credentials.json" ]]; then
-  echo "ERROR: The file './credentials.json' does not exist." >&2
+  echo "ERROR: credentials.json not found in project root."
+  echo "       Create a GCP service account key and save it as credentials.json"
   exit 1
 fi
 
 gcloud auth activate-service-account --key-file="./credentials.json"
+export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/credentials.json"
 
+PROJECT_ID=$(jq -r '.project_id' "./credentials.json")
+gcloud config set project "${PROJECT_ID}"
+
+echo "NOTE: gcloud authentication successful. Project: ${PROJECT_ID}"
+
+./api_setup.sh
